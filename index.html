@@ -424,11 +424,10 @@ async function boot() {
 }
 
 // ── EMAIL TEMPLATE ────────────────────────────────────────────
-function buildEmail(school) {
+function buildEmail(school, lastNameOverride) {
   const yr = new Date().getFullYear() + 1;
-  const lastName = school.head_coach
-    ? school.head_coach.trim().split(' ').filter(Boolean).pop()
-    : '[Last Name]';
+  const lastName = lastNameOverride !== undefined ? lastNameOverride
+    : (school.head_coach ? school.head_coach.trim().split(' ').filter(Boolean).pop() : '[Last Name]');
   return `Coach ${lastName},
 
 My name is Bryan Anderson, Founder and CEO of Arcane Baseball in Columbia, SC. I'm a former MLB catcher with 12+ years of professional experience, including World Series championships and a USA Baseball Gold Medal.
@@ -581,27 +580,35 @@ function renderDetail() {
       ${s.sent_date ? `<span style="font-size:11px;color:#bbb;align-self:center;margin-left:4px">Sent ${s.sent_date}</span>` : ''}
     </div>
 
-    <!-- Coach Info Card -->
+    <!-- Coach Cards -->
+    ${[
+      { role:'Head Coach',              nameKey:'head_coach',  emailKey:'head_email',  phoneKey:'head_phone'  },
+      { role:'Pitching Coach',          nameKey:'pitch_coach', emailKey:'pitch_email', phoneKey:'pitch_phone' },
+      { role:'Hitting Coach',           nameKey:'hit_coach',   emailKey:'hit_email',   phoneKey:'hit_phone'   },
+      { role:'Recruiting Coordinator',  nameKey:'rec_coach',   emailKey:'rec_email',   phoneKey:'rec_phone'   },
+    ].map(c => `
     <div class="card">
-      <div class="card-title">Head Coach Info</div>
-      <div class="form-grid">
+      <div class="card-title">${c.role}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div class="form-field">
-          <label>Coach Name</label>
-          <input type="text" id="f-coach" value="${esc(s.head_coach)}" placeholder="First Last"
-            ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'head_coach',this.value)" />
+          <label>Name</label>
+          <input type="text" value="${esc(s[c.nameKey]||'')}" placeholder="First Last"
+            ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'${c.nameKey}',this.value)" />
         </div>
         <div class="form-field">
-          <label>Coach Email</label>
-          <input type="email" id="f-email" value="${esc(s.head_email)}" placeholder="coach@school.edu"
-            ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'head_email',this.value)" />
+          <label>Email</label>
+          <input type="email" value="${esc(s[c.emailKey]||'')}" placeholder="coach@school.edu"
+            ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'${c.emailKey}',this.value)" />
         </div>
-        <div class="form-field full">
-          <label>Notes / Roster Needs</label>
-          <textarea id="f-notes" rows="3" placeholder="Roster needs, recruiting priorities, prior conversations..."
-            ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'notes',this.value)">${esc(s.notes)}</textarea>
+        <div class="form-field">
+          <label>Phone</label>
+          <input type="tel" value="${esc(s[c.phoneKey]||'')}" placeholder="(xxx) xxx-xxxx"
+            ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'${c.phoneKey}',this.value)" />
         </div>
       </div>
-      ${isAdmin ? `<button onclick="saveCoachInfo(${s.id})" style="margin-top:12px;background:linear-gradient(135deg,#b8860b,#9a7009);border:none;border-radius:7px;padding:9px 20px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Georgia,serif">💾 Save Info</button>` : '<div style="font-size:11px;color:#bbb;margin-top:10px">Log in as admin to edit coach info</div>'}
+    </div>`).join('')}
+    <div style="margin-bottom:14px">
+      ${isAdmin ? `<button onclick="saveCoachInfo(${s.id})" style="background:linear-gradient(135deg,#b8860b,#9a7009);border:none;border-radius:7px;padding:10px 22px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Georgia,serif">💾 Save All Coach Info</button>` : '<div style="font-size:11px;color:#bbb">Log in as admin to edit coach info</div>'}
     </div>
 
     <!-- Roster Needs Card -->
@@ -653,13 +660,41 @@ function renderDetail() {
         <button id="preview-btn" class="email-preview-toggle" onclick="toggleEmailPreview()">▼ Preview email</button>
       </div>
       <div id="email-preview">${emailBody.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+
+      <!-- Per-coach send buttons -->
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px">
+        ${[
+          { label:'Head Coach',             nameKey:'head_coach', emailKey:'head_email'  },
+          { label:'Pitching Coach',         nameKey:'pitch_coach',emailKey:'pitch_email' },
+          { label:'Hitting Coach',          nameKey:'hit_coach',  emailKey:'hit_email'   },
+          { label:'Recruiting Coordinator', nameKey:'rec_coach',  emailKey:'rec_email'   },
+        ].map(c => {
+          const hasEmail = !!(s[c.emailKey]);
+          const lastName = (s[c.nameKey]||'').trim().split(' ').filter(Boolean).pop() || '';
+          const subj = encodeURIComponent('Arcane Baseball \u2013 Elite Prospects for Your ' + (new Date().getFullYear()+1) + ' Roster');
+          const body = encodeURIComponent(buildEmail(s, lastName));
+          const href = hasEmail ? 'mailto:' + s[c.emailKey] + '?subject=' + subj + '&body=' + body : '#';
+          return '<div style="display:flex;align-items:center;gap:8px">'
+            + '<span style="font-size:11px;color:#aaa;width:150px;flex-shrink:0">' + c.label + '</span>'
+            + (hasEmail
+                ? '<a class="btn btn-mail" href="' + href + '" target="_blank" style="flex:1;font-size:12px;padding:8px 10px">\u2709 ' + esc(s[c.nameKey]||c.label) + ' &lt;' + esc(s[c.emailKey]) + '&gt;</a>'
+                : '<span style="font-size:11px;color:#ddd;font-style:italic;flex:1">No email entered</span>')
+            + '</div>';
+        }).join('')}
+      </div>
+
+      <!-- Bottom action row -->
       <div id="email-actions">
         <button class="btn btn-copy" id="copy-btn" onclick="copyEmail(${s.id})">📋 Copy Email</button>
-        ${s.head_email ? `<a class="btn btn-mail" href="${mailtoHref}" target="_blank">✉ Open in Mail</a>` : ''}
+        ${[s.head_email,s.pitch_email,s.hit_email,s.rec_email].filter(Boolean).length > 1
+          ? `<button class="btn btn-mail" onclick="emailAll(${s.id})">✉ Email All (${[s.head_email,s.pitch_email,s.hit_email,s.rec_email].filter(Boolean).length})</button>`
+          : ''}
         ${s.status==='todo'||s.status==='skip' ? `<button class="btn btn-sent" onclick="markSent(${s.id})">✓ Mark Sent →</button>` : ''}
         ${s.status==='sent' ? `<button class="btn btn-responded" onclick="setStatus(${s.id},'responded')">✓ Mark Responded</button>` : ''}
       </div>
-      ${!s.head_email ? `<div id="no-email-tip" style="display:block">💡 Enter coach email above to unlock the "Open in Mail" button — pre-fills everything and opens your email client ready to send.</div>` : ''}
+      ${![s.head_email,s.pitch_email,s.hit_email,s.rec_email].some(Boolean)
+        ? `<div id="no-email-tip" style="display:block">💡 Enter coach emails above to unlock the send buttons.</div>`
+        : ''}
     </div>
     <button class="btn-skip" onclick="skipSchool(${s.id})">Skip this school →</button>
   </div>`;
@@ -690,9 +725,19 @@ async function saveCoachInfo(id) {
   const s = allSchools.find(x => x.id === id);
   if (!s) return;
   const { error } = await sb.from('coach_outreach').update({
-    head_coach: s.head_coach,
-    head_email: s.head_email,
-    notes: s.notes,
+    head_coach:  s.head_coach  || '',
+    head_email:  s.head_email  || '',
+    head_phone:  s.head_phone  || '',
+    pitch_coach: s.pitch_coach || '',
+    pitch_email: s.pitch_email || '',
+    pitch_phone: s.pitch_phone || '',
+    hit_coach:   s.hit_coach   || '',
+    hit_email:   s.hit_email   || '',
+    hit_phone:   s.hit_phone   || '',
+    rec_coach:   s.rec_coach   || '',
+    rec_email:   s.rec_email   || '',
+    rec_phone:   s.rec_phone   || '',
+    notes: s.notes || '',
     updated_at: new Date().toISOString(),
   }).eq('id', id);
   if (error) { toast('Error saving — check connection'); console.error(error); return; }
@@ -813,6 +858,17 @@ function esc(str) {
   return (str || '').replace(/"/g, '&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function emailAll(id) {
+  const s = allSchools.find(x => x.id === id);
+  if (!s) return;
+  const emails = [s.head_email, s.pitch_email, s.hit_email, s.rec_email].filter(Boolean);
+  if (!emails.length) { toast('No emails entered yet'); return; }
+  const subj = encodeURIComponent('Arcane Baseball \u2013 Elite Prospects for Your ' + (new Date().getFullYear()+1) + ' Roster');
+  const body = encodeURIComponent(buildEmail(s));
+  // Opens mail client with all emails in the To field
+  window.open('mailto:' + emails.join(',') + '?subject=' + subj + '&body=' + body, '_blank');
+}
+
 // ── ROSTER NEEDS ─────────────────────────────────────────────
 
 function toggleAddNeed() {
@@ -871,6 +927,7 @@ window.setStatus      = setStatus;
 window.markSent       = markSent;
 window.skipSchool     = skipSchool;
 window.copyEmail      = copyEmail;
+window.emailAll       = emailAll;
 window.saveCoachInfo  = saveCoachInfo;
 window.toggleAddNeed  = toggleAddNeed;
 window.saveNeed       = saveNeed;
