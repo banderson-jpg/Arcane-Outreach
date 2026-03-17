@@ -271,11 +271,83 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #e0e0d8; border-radius: 3px; }
 
+  /* ── MOBILE ── */
   @media (max-width: 768px) {
-    #list-panel { width: 100%; }
-    #detail-panel { display: none; }
+    /* Header */
+    #header { padding: 0 14px; }
+    #header-inner { flex-wrap: wrap; gap: 8px; padding: 10px 0 0; }
+    #brand-sub { display: none; }
+    #header-progress { display: none; }
+    #header-stats { gap: 12px; }
+    .hstat-num { font-size: 15px; }
+    #admin-btn { padding: 5px 10px; font-size: 10px; }
+    #header-tabs { overflow-x: auto; }
+    .htab { padding: 7px 12px; font-size: 10px; white-space: nowrap; }
+
+    /* App layout — full screen panels */
+    #app { flex-direction: column; height: auto; min-height: calc(100vh - 80px); }
+
+    /* List panel — full width, shown by default */
+    #list-panel {
+      width: 100%; border-right: none;
+      height: auto; min-height: calc(100vh - 80px);
+    }
+    #list-panel.mobile-hidden { display: none; }
+
+    /* Detail panel — full width, hidden until school selected */
+    #detail-panel {
+      width: 100%; flex: none;
+      padding: 14px; min-height: calc(100vh - 80px);
+      display: none;
+    }
     #detail-panel.mobile-show { display: block; }
-    #app { flex-direction: column; height: auto; }
+    #detail-panel.empty { display: none; }
+
+    /* Back button — mobile only */
+    #mobile-back {
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: none; color: #b8860b;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      font-family: Georgia, serif; padding: 0; margin-bottom: 16px;
+    }
+
+    /* School title bar stacks on mobile */
+    #school-title-bar { flex-direction: column; gap: 10px; }
+    #staff-link { width: 100%; justify-content: center; box-sizing: border-box; }
+
+    /* Coach cards — stack to single column on mobile */
+    .form-field input, .form-field textarea {
+      font-size: 16px !important; /* prevents iOS zoom on focus */
+    }
+    div[style*="grid-template-columns:1fr 1fr 1fr"] {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 8px !important;
+    }
+
+    /* Status pills wrap */
+    #status-row { flex-wrap: wrap; }
+    .status-pill { font-size: 10px; padding: 5px 10px; }
+
+    /* Email action buttons stack */
+    #email-actions { flex-direction: column; }
+    .btn { min-width: unset; width: 100%; }
+
+    /* Per-coach email rows stack */
+    div[style*="width:150px"] { width: 90px !important; }
+
+    /* Need form row stacks */
+    .need-form-row { grid-template-columns: 1fr 1fr !important; }
+
+    /* Template selector wraps */
+    #email-card div[style*="display:flex;gap:6px"] { flex-wrap: wrap; }
+
+    /* Login modal fits mobile */
+    #login-box { width: calc(100vw - 40px); padding: 24px; }
+
+    /* Filter row stacks */
+    #filter-row { flex-direction: column; }
+    #filter-row select { width: 100%; }
   }
 </style>
 </head>
@@ -424,31 +496,71 @@ async function boot() {
 }
 
 // ── EMAIL TEMPLATE ────────────────────────────────────────────
-function buildEmail(school, lastNameOverride) {
-  const yr = new Date().getFullYear() + 1;
-  const lastName = lastNameOverride !== undefined ? lastNameOverride
-    : (school.head_coach ? school.head_coach.trim().split(' ').filter(Boolean).pop() : '[Last Name]');
-  return `Coach ${lastName},
+const EMAIL_TEMPLATES = {
+  cold: (school, lastName) => {
+    const yr = new Date().getFullYear() + 1;
+    return `Coach ${lastName || '[Last Name]'},
 
-My name is Bryan Anderson, Founder and CEO of Arcane Baseball in Columbia, SC. I'm a former MLB catcher with 12+ years of professional experience, including World Series championships and a USA Baseball Gold Medal.
+My name is Bryan Anderson — I'm a former MLB catcher with 12 years of professional experience, including World Series championships and a USA Baseball Gold Medal. I'm also the founder of Arcane Baseball, a professional-grade training facility in Columbia, SC.
 
-At Arcane Baseball, we train and develop elite prospects using professional-grade technology — TrackMan, HitTrax, and BaseballCloud. Every athlete in our system is evaluated not just on physical metrics, but on character, coachability, and competitive makeup.
+I work with a group of high-level prospects and I want to make sure I'm sending you players who actually fit what you need — not just blasting you with profiles.
 
-As you build your ${yr} recruiting class at ${school.school_name}, I'd love to understand your roster needs:
+Two quick questions:
+  1. What positions are you looking to fill in your ${yr} recruiting class?
+  2. Are there any specific measurables or academic thresholds I should know about?
 
-  • What positions are you prioritizing in the upcoming class?
-  • Are there specific measurables or academic thresholds we should know about?
-  • Would you be open to receiving verified data profiles on players who match your criteria?
+We track all of our athletes with TrackMan, HitTrax, and BaseballCloud, so I can send you verified data profiles on anyone who fits your criteria.
 
-We maintain a live prospect database at players.arcanebaseball.com where you can view metrics and full athlete profiles at any time. I'd be glad to personally curate a short list that fits exactly what you're looking for.
+Live prospect database: players.arcanebaseball.com
 
-I look forward to building a relationship with ${school.school_name}'s program.
+Appreciate your time.
 
-Best,
 Bryan Anderson
 Founder & CEO | Arcane Baseball
 1200 Heyward Street, Columbia, SC 29205
-arcanebaseball.com | players.arcanebaseball.com`;
+arcanebaseball.com | (xxx) xxx-xxxx`;
+  },
+
+  followup: (school, lastName) => {
+    const yr = new Date().getFullYear() + 1;
+    return `Coach ${lastName || '[Last Name]'},
+
+Just circling back on my note from a couple weeks ago. I know this time of year is busy.
+
+I have several prospects graduating in ${yr} — catchers, arms, middle infielders — all tracked with verified data. If you have a need I can match, I'd rather send you one right-fit player than five that don't fit.
+
+Even a one-line reply on what you're looking for goes a long way.
+
+Bryan Anderson
+Arcane Baseball | Columbia, SC
+players.arcanebaseball.com
+(xxx) xxx-xxxx`;
+  },
+
+  response: (school, lastName) => {
+    return `Coach ${lastName || '[Last Name]'},
+
+Thanks for getting back to me — really appreciate it.
+
+Based on what you're looking for, I have a prospect I think could be a strong fit for your program. I'll put together a data profile and send it your way shortly.
+
+You can also browse our full roster here:
+players.arcanebaseball.com
+
+Happy to set up a call if you want to talk through any of them.
+
+Bryan Anderson
+Arcane Baseball | Columbia, SC
+(xxx) xxx-xxxx`;
+  },
+};
+
+let activeTemplate = 'cold';
+
+function buildEmail(school, lastNameOverride) {
+  const lastName = lastNameOverride !== undefined ? lastNameOverride
+    : (school.head_coach ? school.head_coach.trim().split(' ').filter(Boolean).pop() : '[Last Name]');
+  return EMAIL_TEMPLATES[activeTemplate](school, lastName);
 }
 
 // ── STATS ─────────────────────────────────────────────────────
@@ -536,8 +648,24 @@ function renderList() {
 // ── SELECT SCHOOL ─────────────────────────────────────────────
 function selectSchool(id) {
   activeId = id;
-  renderList(); // update active highlight
+  renderList();
   renderDetail();
+  // Mobile: hide list, show detail
+  if (window.innerWidth <= 768) {
+    document.getElementById('list-panel').classList.add('mobile-hidden');
+    const dp = document.getElementById('detail-panel');
+    dp.classList.remove('empty');
+    dp.classList.add('mobile-show');
+  }
+}
+
+function mobileBack() {
+  activeId = null;
+  document.getElementById('list-panel').classList.remove('mobile-hidden');
+  const dp = document.getElementById('detail-panel');
+  dp.classList.remove('mobile-show');
+  dp.classList.add('empty');
+  dp.innerHTML = '<div style="font-size:40px">⚾</div><div id="empty-msg">Select a school to begin</div>';
 }
 
 // ── DETAIL RENDER ─────────────────────────────────────────────
@@ -561,6 +689,9 @@ function renderDetail() {
     : '#';
 
   panel.innerHTML = `<div id="detail-inner">
+    <!-- Mobile back button -->
+    <button id="mobile-back" onclick="mobileBack()" style="display:none">← Back to Schools</button>
+
     <!-- Title -->
     <div id="school-title-bar">
       <div id="school-name-wrap">
@@ -655,10 +786,27 @@ function renderDetail() {
 
     <!-- Email Card -->
     <div class="card${s.status==='sent'?' sent-state':''}" id="email-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div class="card-title" style="margin-bottom:0">Outreach Email</div>
-        <button id="preview-btn" class="email-preview-toggle" onclick="toggleEmailPreview()">▼ Preview email</button>
+        <button id="preview-btn" class="email-preview-toggle" onclick="toggleEmailPreview()">▼ Preview</button>
       </div>
+
+      <!-- Template selector -->
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        ${[
+          { key:'cold',     label:'Cold Outreach' },
+          { key:'followup', label:'Follow Up' },
+          { key:'response', label:'They Responded' },
+        ].map(t => `
+          <button onclick="switchTemplate('${t.key}',${s.id})" style="
+            flex:1; padding:7px 6px; font-size:11px; font-weight:700;
+            border-radius:6px; cursor:pointer; font-family:Georgia,serif;
+            border:1.5px solid ${activeTemplate===t.key ? '#b8860b' : '#e0e0d8'};
+            background:${activeTemplate===t.key ? 'rgba(184,134,11,.1)' : '#f8f8f4'};
+            color:${activeTemplate===t.key ? '#7a5500' : '#aaa'};
+          ">${t.label}</button>`).join('')}
+      </div>
+
       <div id="email-preview">${emailBody.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
 
       <!-- Per-coach send buttons -->
@@ -704,6 +852,10 @@ function renderDetail() {
     document.getElementById('email-preview').classList.add('visible');
     document.getElementById('preview-btn').textContent = '▲ Hide email';
   }
+
+  // Show back button on mobile
+  const backBtn = document.getElementById('mobile-back');
+  if (backBtn && window.innerWidth <= 768) backBtn.style.display = 'flex';
 }
 
 // ── ACTIONS ──────────────────────────────────────────────────
@@ -774,8 +926,12 @@ async function markSent(id) {
   const list = getFilteredList();
   const idx = list.findIndex(x => x.id === id);
   const next = list.slice(idx + 1).find(x => x.status === 'todo');
-  if (next) selectSchool(next.id);
-  else renderDetail();
+  if (next) {
+    selectSchool(next.id);
+  } else {
+    if (window.innerWidth <= 768) mobileBack();
+    else renderDetail();
+  }
 }
 
 async function skipSchool(id) {
@@ -858,6 +1014,19 @@ function esc(str) {
   return (str || '').replace(/"/g, '&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function switchTemplate(templateKey, schoolId) {
+  activeTemplate = templateKey;
+  // Re-render detail to update button highlights and preview
+  renderDetail();
+  // Re-open preview if it was open
+  if (emailPreviewOpen) {
+    const el = document.getElementById('email-preview');
+    const btn = document.getElementById('preview-btn');
+    if (el) el.classList.add('visible');
+    if (btn) btn.textContent = '▲ Preview';
+  }
+}
+
 function emailAll(id) {
   const s = allSchools.find(x => x.id === id);
   if (!s) return;
@@ -923,11 +1092,13 @@ async function deleteNeed(schoolId, index) {
 
 // ── EXPOSE TO WINDOW for inline HTML onclick handlers ────────
 window.selectSchool   = selectSchool;
+window.mobileBack     = mobileBack;
 window.setStatus      = setStatus;
 window.markSent       = markSent;
 window.skipSchool     = skipSchool;
 window.copyEmail      = copyEmail;
 window.emailAll       = emailAll;
+window.switchTemplate = switchTemplate;
 window.saveCoachInfo  = saveCoachInfo;
 window.toggleAddNeed  = toggleAddNeed;
 window.saveNeed       = saveNeed;
