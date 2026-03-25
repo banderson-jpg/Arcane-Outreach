@@ -721,23 +721,31 @@ function renderDetail() {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div class="form-field">
           <label>Name</label>
-          <input type="text" value="${esc(s[c.nameKey]||'')}" placeholder="First Last"
+          <input type="text" id="f-${c.nameKey}" value="${esc(s[c.nameKey]||'')}" placeholder="First Last"
             ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'${c.nameKey}',this.value)" />
         </div>
         <div class="form-field">
           <label>Email</label>
-          <input type="email" value="${esc(s[c.emailKey]||'')}" placeholder="coach@school.edu"
+          <input type="email" id="f-${c.emailKey}" value="${esc(s[c.emailKey]||'')}" placeholder="coach@school.edu"
             ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'${c.emailKey}',this.value)" />
         </div>
         <div class="form-field">
           <label>Phone</label>
-          <input type="tel" value="${esc(s[c.phoneKey]||'')}" placeholder="(xxx) xxx-xxxx"
+          <input type="tel" id="f-${c.phoneKey}" value="${esc(s[c.phoneKey]||'')}" placeholder="(xxx) xxx-xxxx"
             ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'${c.phoneKey}',this.value)" />
         </div>
       </div>
     </div>`).join('')}
     <div style="margin-bottom:14px">
-      ${isAdmin ? `<button onclick="saveCoachInfo(${s.id})" style="background:linear-gradient(135deg,#b8860b,#9a7009);border:none;border-radius:7px;padding:10px 22px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Georgia,serif">💾 Save All Coach Info</button>` : '<div style="font-size:11px;color:#bbb">Log in as admin to edit coach info</div>'}
+      ${isAdmin ? `
+      <div class="card">
+        <div class="card-title">Notes</div>
+        <textarea id="f-notes" rows="3" placeholder="Roster needs, recruiting priorities, prior conversations..."
+          ${isAdmin?'':'readonly'} oninput="localUpdate(${s.id},'notes',this.value)"
+          style="width:100%;background:#fafaf6;border:1px solid #e0e0d8;border-radius:7px;padding:9px 11px;font-size:13px;color:#333;font-family:Georgia,serif;resize:vertical">${esc(s.notes||'')}</textarea>
+      </div>
+      <button onclick="saveCoachInfo(${s.id})" style="background:linear-gradient(135deg,#b8860b,#9a7009);border:none;border-radius:7px;padding:10px 22px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Georgia,serif">💾 Save All Coach Info</button>` 
+      : '<div style="font-size:11px;color:#bbb">Log in as admin to edit coach info</div>'}
     </div>
 
     <!-- Roster Needs Card -->
@@ -875,26 +883,39 @@ function localUpdate(id, field, value) {
 async function saveCoachInfo(id) {
   const s = allSchools.find(x => x.id === id);
   if (!s) return;
-  const { error } = await sb.from('coach_outreach').update({
-    head_coach:  s.head_coach  || '',
-    head_email:  s.head_email  || '',
-    head_phone:  s.head_phone  || '',
-    asst_coach:  s.asst_coach  || '',
-    asst_email:  s.asst_email  || '',
-    asst_phone:  s.asst_phone  || '',
-    pitch_coach: s.pitch_coach || '',
-    pitch_email: s.pitch_email || '',
-    pitch_phone: s.pitch_phone || '',
-    hit_coach:   s.hit_coach   || '',
-    hit_email:   s.hit_email   || '',
-    hit_phone:   s.hit_phone   || '',
-    rec_coach:   s.rec_coach   || '',
-    rec_email:   s.rec_email   || '',
-    rec_phone:   s.rec_phone   || '',
-    notes: s.notes || '',
+
+  // Read directly from the input fields so we capture what's actually on screen
+  const getValue = (selector) => {
+    const el = document.querySelector(selector);
+    return el ? el.value : (s[selector.replace('#f-','')] || '');
+  };
+
+  const updates = {
+    head_coach:  document.getElementById('f-head_coach')  ? document.getElementById('f-head_coach').value  : s.head_coach  || '',
+    head_email:  document.getElementById('f-head_email')  ? document.getElementById('f-head_email').value  : s.head_email  || '',
+    head_phone:  document.getElementById('f-head_phone')  ? document.getElementById('f-head_phone').value  : s.head_phone  || '',
+    asst_coach:  document.getElementById('f-asst_coach')  ? document.getElementById('f-asst_coach').value  : s.asst_coach  || '',
+    asst_email:  document.getElementById('f-asst_email')  ? document.getElementById('f-asst_email').value  : s.asst_email  || '',
+    asst_phone:  document.getElementById('f-asst_phone')  ? document.getElementById('f-asst_phone').value  : s.asst_phone  || '',
+    pitch_coach: document.getElementById('f-pitch_coach') ? document.getElementById('f-pitch_coach').value : s.pitch_coach || '',
+    pitch_email: document.getElementById('f-pitch_email') ? document.getElementById('f-pitch_email').value : s.pitch_email || '',
+    pitch_phone: document.getElementById('f-pitch_phone') ? document.getElementById('f-pitch_phone').value : s.pitch_phone || '',
+    hit_coach:   document.getElementById('f-hit_coach')   ? document.getElementById('f-hit_coach').value   : s.hit_coach   || '',
+    hit_email:   document.getElementById('f-hit_email')   ? document.getElementById('f-hit_email').value   : s.hit_email   || '',
+    hit_phone:   document.getElementById('f-hit_phone')   ? document.getElementById('f-hit_phone').value   : s.hit_phone   || '',
+    rec_coach:   document.getElementById('f-rec_coach')   ? document.getElementById('f-rec_coach').value   : s.rec_coach   || '',
+    rec_email:   document.getElementById('f-rec_email')   ? document.getElementById('f-rec_email').value   : s.rec_email   || '',
+    rec_phone:   document.getElementById('f-rec_phone')   ? document.getElementById('f-rec_phone').value   : s.rec_phone   || '',
+    notes:       document.getElementById('f-notes')       ? document.getElementById('f-notes').value       : s.notes       || '',
     updated_at: new Date().toISOString(),
-  }).eq('id', id);
+  };
+
+  const { error } = await sb.from('coach_outreach').update(updates).eq('id', id);
   if (error) { toast('Error saving — check connection'); console.error(error); return; }
+
+  // Update local allSchools record so navigation preserves the data
+  Object.assign(s, updates);
+
   toast('✓ Coach info saved');
   updateStats();
   renderList();
