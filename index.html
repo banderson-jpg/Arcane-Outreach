@@ -501,24 +501,21 @@ const EMAIL_TEMPLATES = {
     const yr = new Date().getFullYear() + 1;
     return `Coach ${lastName || '[Last Name]'},
 
-My name is Bryan Anderson — I'm a former MLB catcher with 12 years of professional experience, including World Series championships and a USA Baseball Gold Medal. I'm also the founder of Arcane Baseball, a professional-grade training facility in Columbia, SC.
+My name is Bryan Anderson. I'm a former MLB catcher — 12 years professional, including World Series championships and a USA Baseball Gold Medal. I now run Arcane Baseball in Columbia, SC, where we develop high school and college-bound players using TrackMan and HitTrax.
 
-I work with a group of high-level prospects and I want to make sure I'm sending you players who actually fit what you need — not just blasting you with profiles.
+I keep a tight group. I'm not a clearinghouse.
+
+I'm reaching out because I have players at your position group right now and I want to make sure I'm sending you the right ones — not just anyone with a bat.
 
 Two quick questions:
-  1. What positions are you looking to fill in your ${yr} recruiting class?
-  2. Are there any specific measurables or academic thresholds I should know about?
+  1. What positions are you looking to fill in your ${yr} class?
+  2. Any specific thresholds I should know — velo, exit velocity, academics?
 
-We track all of our athletes with TrackMan, HitTrax, and BaseballCloud, so I can send you verified data profiles on anyone who fits your criteria.
-
-Live prospect database: players.arcanebaseball.com
-
-Appreciate your time.
+Our verified data profiles are at players.arcanebaseball.com. I'll send you exactly who fits.
 
 Bryan Anderson
-Founder & CEO | Arcane Baseball
-1200 Heyward Street, Columbia, SC 29205
-arcanebaseball.com | (xxx) xxx-xxxx`;
+Arcane Baseball | Columbia, SC
+[phone number]`;
   },
 
   followup: (school, lastName) => {
@@ -714,6 +711,7 @@ function renderDetail() {
     <!-- Coach Cards -->
     ${[
       { role:'Head Coach',              nameKey:'head_coach',  emailKey:'head_email',  phoneKey:'head_phone'  },
+      { role:'Assistant Coach',         nameKey:'asst_coach',  emailKey:'asst_email',  phoneKey:'asst_phone'  },
       { role:'Pitching Coach',          nameKey:'pitch_coach', emailKey:'pitch_email', phoneKey:'pitch_phone' },
       { role:'Hitting Coach',           nameKey:'hit_coach',   emailKey:'hit_email',   phoneKey:'hit_phone'   },
       { role:'Recruiting Coordinator',  nameKey:'rec_coach',   emailKey:'rec_email',   phoneKey:'rec_phone'   },
@@ -813,6 +811,7 @@ function renderDetail() {
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px">
         ${[
           { label:'Head Coach',             nameKey:'head_coach', emailKey:'head_email'  },
+          { label:'Assistant Coach',        nameKey:'asst_coach', emailKey:'asst_email'  },
           { label:'Pitching Coach',         nameKey:'pitch_coach',emailKey:'pitch_email' },
           { label:'Hitting Coach',          nameKey:'hit_coach',  emailKey:'hit_email'   },
           { label:'Recruiting Coordinator', nameKey:'rec_coach',  emailKey:'rec_email'   },
@@ -834,13 +833,13 @@ function renderDetail() {
       <!-- Bottom action row -->
       <div id="email-actions">
         <button class="btn btn-copy" id="copy-btn" onclick="copyEmail(${s.id})">📋 Copy Email</button>
-        ${[s.head_email,s.pitch_email,s.hit_email,s.rec_email].filter(Boolean).length > 1
-          ? `<button class="btn btn-mail" onclick="emailAll(${s.id})">✉ Email All (${[s.head_email,s.pitch_email,s.hit_email,s.rec_email].filter(Boolean).length})</button>`
+        ${[s.head_email,s.asst_email,s.pitch_email,s.hit_email,s.rec_email].filter(Boolean).length > 1
+          ? `<button class="btn btn-mail" onclick="emailAll(${s.id})">✉ Email All (${[s.head_email,s.asst_email,s.pitch_email,s.hit_email,s.rec_email].filter(Boolean).length})</button>`
           : ''}
         ${s.status==='todo'||s.status==='skip' ? `<button class="btn btn-sent" onclick="markSent(${s.id})">✓ Mark Sent →</button>` : ''}
         ${s.status==='sent' ? `<button class="btn btn-responded" onclick="setStatus(${s.id},'responded')">✓ Mark Responded</button>` : ''}
       </div>
-      ${![s.head_email,s.pitch_email,s.hit_email,s.rec_email].some(Boolean)
+      ${![s.head_email,s.asst_email,s.pitch_email,s.hit_email,s.rec_email].some(Boolean)
         ? `<div id="no-email-tip" style="display:block">💡 Enter coach emails above to unlock the send buttons.</div>`
         : ''}
     </div>
@@ -880,6 +879,9 @@ async function saveCoachInfo(id) {
     head_coach:  s.head_coach  || '',
     head_email:  s.head_email  || '',
     head_phone:  s.head_phone  || '',
+    asst_coach:  s.asst_coach  || '',
+    asst_email:  s.asst_email  || '',
+    asst_phone:  s.asst_phone  || '',
     pitch_coach: s.pitch_coach || '',
     pitch_email: s.pitch_email || '',
     pitch_phone: s.pitch_phone || '',
@@ -1030,7 +1032,7 @@ function switchTemplate(templateKey, schoolId) {
 function emailAll(id) {
   const s = allSchools.find(x => x.id === id);
   if (!s) return;
-  const emails = [s.head_email, s.pitch_email, s.hit_email, s.rec_email].filter(Boolean);
+  const emails = [s.head_email, s.asst_email, s.pitch_email, s.hit_email, s.rec_email].filter(Boolean);
   if (!emails.length) { toast('No emails entered yet'); return; }
   const subj = encodeURIComponent('Arcane Baseball \u2013 Elite Prospects for Your ' + (new Date().getFullYear()+1) + ' Roster');
   const body = encodeURIComponent(buildEmail(s));
